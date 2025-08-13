@@ -238,6 +238,7 @@ const SettingsPage = () => {
 					</View>
 				</View>
 
+			</View>
 			<View style={styles.card}>
 				<TouchableOpacity style={styles.secondaryButton} onPress={goToTransactions}>
 					<Text style={styles.secondaryButtonText}>View Transaction History</Text>
