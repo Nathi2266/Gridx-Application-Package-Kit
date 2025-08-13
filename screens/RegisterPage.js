@@ -1,6 +1,6 @@
 // screens/RegisterPage.js
 import React, { useState, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import styles from '../styles/styles';
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -14,8 +14,11 @@ export default function RegisterPage() {
   const nav = useNavigation();
 
   const onSubmit = async () => {
-    await register({ name, email, password });
-    nav.navigate('Login'); // Navigate to Login page after successful registration
+    const result = await register({ name, email, password });
+    if (result?.success) {
+      Alert.alert('Success', 'Registration successful. Please log in.');
+      nav.navigate('Login');
+    }
   };
 
   return (

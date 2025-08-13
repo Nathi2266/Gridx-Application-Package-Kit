@@ -54,15 +54,8 @@ export const AuthProvider = ({ children }) => {
   const register = async ({ name, email, password }) => {
     setLoading(true);
     try {
-      const response = await registerUser({ full_name: name, email, password }); // Assuming registerUser takes full_name
+      const response = await registerUser({ full_name: name, email, password });
       if (response.success) {
-        // After successful registration, you might automatically log them in
-        // Or, if your register endpoint returns a token, you can use that
-        // For now, we'll assume a separate login step is needed or the register returns a token.
-        const { token, user_id } = response.data; // Assuming your register returns token and user_id
-        await AsyncStorage.setItem('userToken', token);
-        setToken(token);
-        setUser({ id: user_id, name, email });
         setLoading(false);
         return { success: true };
       } else {

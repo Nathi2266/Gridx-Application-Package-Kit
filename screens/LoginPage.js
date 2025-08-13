@@ -1,6 +1,6 @@
 // screens/LoginPage.js
 import React, { useState, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import styles from '../styles/styles';
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -13,9 +13,11 @@ export default function LoginPage() {
   const nav = useNavigation();
 
   const onSubmit = async () => {
-    await login({ email, password });
-    // Navigate to Main (HomeTabs) after successful login
-    nav.navigate('Main');
+    const result = await login({ email, password });
+    if (result?.success) {
+      Alert.alert('Success', 'Login successful.');
+      nav.navigate('Main');
+    }
   };
 
   return (
