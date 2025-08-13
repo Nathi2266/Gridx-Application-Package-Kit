@@ -8,7 +8,7 @@ export const topUp = async ({ userId, amount, method, token }) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ userId, amount, paymentMethod: method }),
+      body: JSON.stringify({ user_id: userId, amount, payment_method: method }),
     });
 
     const data = await response.json();
