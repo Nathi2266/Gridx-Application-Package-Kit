@@ -1,6 +1,8 @@
 // contexts/AuthContext.js
 import React, { createContext, useState, useEffect } from 'react';
 import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // For persisting token
+import { loginUser, registerUser } from '../api'; // Assuming registerUser will also be in api.js
 
 export const AuthContext = createContext();
 
@@ -10,22 +12,38 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // TODO: load persisted auth (SecureStore / AsyncStorage)
-    // if a token is found, validate it and set user/token
+    const loadAuthData = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem('userToken');
+        if (storedToken) {
+          setToken(storedToken);
+          // TODO: Optionally, validate token with backend or decode user info from it
+          // For now, assume a valid token means a logged-in user
+          // You might need to fetch user details from an /api/me endpoint
+          setUser({ id: 'unknown', email: 'unknown' }); // Placeholder
+        }
+      } catch (error) {
+        console.error('Failed to load auth data from storage', error);
+      }
+    };
+    loadAuthData();
   }, []);
 
   const login = async ({ email, password }) => {
     setLoading(true);
     try {
-      // TODO: replace with real API call that returns a token
-      if (!email || !password) throw new Error('Email and password required');
-      // mock success with a dummy token
-      const mockUser = { id: 'u1', name: 'GridX User', email };
-      const dummyToken = 'dummy-auth-token-after-login'; // Replace with actual token from backend
-      setUser(mockUser);
-      setToken(dummyToken);
-      setLoading(false);
-      return { success: true };
+      const response = await loginUser({ email, password });
+      if (response.success) {
+        const { token } = response;
+        await AsyncStorage.setItem('userToken', token);
+        setToken(token);
+        // Decode user info from token or fetch from a /me endpoint if needed
+        setUser({ id: 'temp_id', email: email }); // Placeholder
+        setLoading(false);
+        return { success: true };
+      } else {
+        throw new Error(response.error || 'Login failed');
+      }
     } catch (err) {
       setLoading(false);
       Alert.alert('Login failed', err.message || 'Unknown error');
@@ -36,14 +54,20 @@ export const AuthProvider = ({ children }) => {
   const register = async ({ name, email, password }) => {
     setLoading(true);
     try {
-      // TODO: replace with API call to create user and get a token
-      if (!email || !password || !name) throw new Error('Please fill all fields');
-      const mockUser = { id: 'u2', name, email };
-      const dummyToken = 'dummy-auth-token-after-registration'; // Replace with actual token from backend
-      setUser(mockUser);
-      setToken(dummyToken);
-      setLoading(false);
-      return { success: true };
+      const response = await registerUser({ full_name: name, email, password }); // Assuming registerUser takes full_name
+      if (response.success) {
+        // After successful registration, you might automatically log them in
+        // Or, if your register endpoint returns a token, you can use that
+        // For now, we'll assume a separate login step is needed or the register returns a token.
+        const { token, user_id } = response.data; // Assuming your register returns token and user_id
+        await AsyncStorage.setItem('userToken', token);
+        setToken(token);
+        setUser({ id: user_id, name, email });
+        setLoading(false);
+        return { success: true };
+      } else {
+        throw new Error(response.error || 'Registration failed');
+      }
     } catch (err) {
       setLoading(false);
       Alert.alert('Registration failed', err.message || 'Unknown error');
@@ -51,10 +75,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    // TODO: clear persisted tokens and user data
-    setUser(null);
-    setToken(null);
+  const logout = async () => {
+    try {
+      await AsyncStorage.removeItem('userToken');
+      setUser(null);
+      setToken(null);
+    } catch (error) {
+      console.error('Failed to clear auth data from storage', error);
+    }
   };
 
   return (
