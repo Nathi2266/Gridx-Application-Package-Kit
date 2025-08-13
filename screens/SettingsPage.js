@@ -1,15 +1,14 @@
-import React, { useEffect, useState, useContext, useCallback } from 'react';
+import React, { useEffect, useState, useContext, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, Switch, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../contexts/AuthContext';
+import { ThemeContext } from '../contexts/ThemeContext';
 import { fetchMe, updateProfile, changePassword, updateNotifications } from '../api';
-
-const THEME_KEY = 'app_theme_preference';
 
 const SettingsPage = () => {
 	const navigation = useNavigation();
 	const { token, logout } = useContext(AuthContext);
+	const { theme, setTheme, colors } = useContext(ThemeContext);
 
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
@@ -24,27 +23,12 @@ const SettingsPage = () => {
 	});
 
 	const [editMode, setEditMode] = useState(false);
-	const [theme, setTheme] = useState('light');
 
 	const [currentPassword, setCurrentPassword] = useState('');
 	const [newPassword, setNewPassword] = useState('');
 	const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
-	const loadTheme = useCallback(async () => {
-		try {
-			const t = await AsyncStorage.getItem(THEME_KEY);
-			if (t) setTheme(t);
-		} catch {}
-	}, []);
-
-	const saveTheme = useCallback(async (next) => {
-		try {
-			setTheme(next);
-			await AsyncStorage.setItem(THEME_KEY, next);
-		} catch (e) {
-			Alert.alert('Theme', 'Failed to save theme preference');
-		}
-	}, []);
+	// theme persistence handled globally in ThemeProvider
 
 	const loadProfile = useCallback(async () => {
 		if (!token) return;
@@ -65,9 +49,8 @@ const SettingsPage = () => {
 	}, [token]);
 
 	useEffect(() => {
-		loadTheme();
 		loadProfile();
-	}, [loadTheme, loadProfile]);
+	}, [loadProfile]);
 
 	const onSaveProfile = async () => {
 		setSaving(true);
@@ -119,6 +102,27 @@ const SettingsPage = () => {
 		}
 	};
 
+	const themedStyles = useMemo(() => ({
+		containerBg: { backgroundColor: colors.background },
+		loadingBg: { backgroundColor: colors.background },
+		cardBg: { backgroundColor: colors.card },
+		text: { color: colors.text },
+		muted: { color: colors.muted },
+		input: {
+			backgroundColor: theme === 'dark' ? '#1c1c1c' : 'white',
+			borderColor: colors.border,
+			color: colors.text,
+		},
+		secondaryButton: {
+			backgroundColor: theme === 'dark' ? '#1c1c1c' : 'white',
+			borderColor: colors.border,
+		},
+		toggleButton: {
+			borderColor: colors.border,
+			backgroundColor: theme === 'dark' ? '#121212' : 'white',
+		},
+	}), [colors, theme]);
+
 	const goToTransactions = () => {
 		// Adjust route name if you have a dedicated transactions screen
 		navigation.navigate('TopUp');
@@ -126,21 +130,21 @@ const SettingsPage = () => {
 
 	if (loading) {
 		return (
-			<View style={styles.loadingContainer}>
+			<View style={[styles.loadingContainer, themedStyles.loadingBg]}>
 				<ActivityIndicator size="large" />
 			</View>
 		);
 	}
 
 	return (
-		<ScrollView contentContainerStyle={styles.container}>
-			<View style={styles.profileCard}>
+		<ScrollView style={themedStyles.containerBg} contentContainerStyle={[styles.container, { backgroundColor: colors.background }]}>
+			<View style={[styles.profileCard, themedStyles.cardBg]}>
 				<Image
 					source={profile.profile_image_url ? { uri: profile.profile_image_url } : require('../assets/icon.png')}
 					style={styles.avatar}
 				/>
-				<Text style={styles.name}>{profile.full_name || 'Unnamed User'}</Text>
-				<Text style={styles.email}>{profile.email}</Text>
+				<Text style={[styles.name, themedStyles.text]}>{profile.full_name || 'Unnamed User'}</Text>
+				<Text style={[styles.email, themedStyles.muted]}>{profile.email}</Text>
 
 				{!editMode ? (
 					<TouchableOpacity style={styles.editButton} onPress={() => setEditMode(true)}>
@@ -149,34 +153,34 @@ const SettingsPage = () => {
 				) : (
 					<View style={{ width: '100%' }}>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, themedStyles.input]}
 							placeholder="Full name"
 							value={profile.full_name}
 							onChangeText={(t) => setProfile((p) => ({ ...p, full_name: t }))}
 						/>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, themedStyles.input]}
 							placeholder="Email"
 							keyboardType="email-address"
 							value={profile.email}
 							onChangeText={(t) => setProfile((p) => ({ ...p, email: t }))}
 						/>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, themedStyles.input]}
 							placeholder="Phone"
 							keyboardType="phone-pad"
 							value={profile.phone_number}
 							onChangeText={(t) => setProfile((p) => ({ ...p, phone_number: t }))}
 						/>
 						<TextInput
-							style={styles.input}
+							style={[styles.input, themedStyles.input]}
 							placeholder="Profile Image URL"
 							value={profile.profile_image_url}
 							onChangeText={(t) => setProfile((p) => ({ ...p, profile_image_url: t }))}
 						/>
 						<View style={styles.row}>
-							<TouchableOpacity style={[styles.secondaryButton, { flex: 1, marginRight: 8 }]} onPress={() => setEditMode(false)}>
-								<Text style={styles.secondaryButtonText}>Cancel</Text>
+							<TouchableOpacity style={[styles.secondaryButton, themedStyles.secondaryButton, { flex: 1, marginRight: 8 }]} onPress={() => setEditMode(false)}>
+								<Text style={[styles.secondaryButtonText, themedStyles.text]}>Cancel</Text>
 							</TouchableOpacity>
 							<TouchableOpacity style={[styles.primaryButton, { flex: 1, marginLeft: 8 }]} onPress={onSaveProfile} disabled={saving}>
 								<Text style={styles.primaryButtonText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
@@ -186,24 +190,24 @@ const SettingsPage = () => {
 				)}
 			</View>
 
-			<View style={styles.card}>
-				<Text style={styles.cardTitle}>Security</Text>
+			<View style={[styles.card, themedStyles.cardBg]}>
+				<Text style={[styles.cardTitle, themedStyles.text]}>Security</Text>
 				<TextInput
-					style={styles.input}
+					style={[styles.input, themedStyles.input]}
 					placeholder="Current Password"
 					secureTextEntry
 					value={currentPassword}
 					onChangeText={setCurrentPassword}
 				/>
 				<TextInput
-					style={styles.input}
+					style={[styles.input, themedStyles.input]}
 					placeholder="New Password"
 					secureTextEntry
 					value={newPassword}
 					onChangeText={setNewPassword}
 				/>
 				<TextInput
-					style={styles.input}
+					style={[styles.input, themedStyles.input]}
 					placeholder="Confirm New Password"
 					secureTextEntry
 					value={confirmNewPassword}
@@ -214,37 +218,37 @@ const SettingsPage = () => {
 				</TouchableOpacity>
 			</View>
 
-			<View style={styles.card}>
-				<Text style={styles.cardTitle}>Preferences</Text>
+			<View style={[styles.card, themedStyles.cardBg]}>
+				<Text style={[styles.cardTitle, themedStyles.text]}>Preferences</Text>
 				<View style={styles.rowBetween}>
-					<Text style={styles.preferenceText}>Push Notifications</Text>
+					<Text style={[styles.preferenceText, themedStyles.text]}>Push Notifications</Text>
 					<Switch value={profile.notifications_enabled} onValueChange={onToggleNotifications} />
 				</View>
 				<View style={styles.rowBetween}>
-					<Text style={styles.preferenceText}>Theme</Text>
+					<Text style={[styles.preferenceText, themedStyles.text]}>Theme</Text>
 					<View style={styles.row}>
 						<TouchableOpacity
-							style={[styles.toggleButton, theme === 'light' && styles.toggleButtonActive]}
-							onPress={() => saveTheme('light')}
+							style={[styles.toggleButton, themedStyles.toggleButton, theme === 'light' && styles.toggleButtonActive]}
+							onPress={() => setTheme('light')}
 						>
-							<Text style={[styles.toggleButtonText, theme === 'light' && styles.toggleButtonTextActive]}>Light</Text>
+							<Text style={[styles.toggleButtonText, theme === 'light' && styles.toggleButtonTextActive, theme === 'dark' ? { color: '#ddd' } : null]}>Light</Text>
 						</TouchableOpacity>
 						<TouchableOpacity
-							style={[styles.toggleButton, theme === 'dark' && styles.toggleButtonActive]}
-							onPress={() => saveTheme('dark')}
+							style={[styles.toggleButton, themedStyles.toggleButton, theme === 'dark' && styles.toggleButtonActive]}
+							onPress={() => setTheme('dark')}
 						>
-							<Text style={[styles.toggleButtonText, theme === 'dark' && styles.toggleButtonTextActive]}>Dark</Text>
+							<Text style={[styles.toggleButtonText, theme === 'dark' && styles.toggleButtonTextActive, theme === 'dark' ? { color: '#ddd' } : null]}>Dark</Text>
 						</TouchableOpacity>
 					</View>
 				</View>
-
 			</View>
-			<View style={styles.card}>
+
+			<View style={[styles.card, themedStyles.cardBg]}>
 				<TouchableOpacity style={styles.secondaryButton} onPress={goToTransactions}>
-					<Text style={styles.secondaryButtonText}>View Transaction History</Text>
+					<Text style={[styles.secondaryButtonText, themedStyles.text]}>View Transaction History</Text>
 				</TouchableOpacity>
-				<TouchableOpacity style={[styles.secondaryButton, { marginTop: 12 }]} onPress={logout}>
-					<Text style={[styles.secondaryButtonText, { color: '#D00' }]}>Logout</Text>
+				<TouchableOpacity style={[styles.secondaryButton, themedStyles.secondaryButton, { marginTop: 12 }]} onPress={logout}>
+					<Text style={[styles.secondaryButtonText, { color: theme === 'dark' ? '#ff6b6b' : '#D00' }]}>Logout</Text>
 				</TouchableOpacity>
 			</View>
 		</ScrollView>
