@@ -46,8 +46,8 @@ export default function LoginPage() {
           <Text style={styles.primaryButtonText}>{loading ? 'Signing in...' : 'Login'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.linkButton}>
-          <Text style={styles.linkText}>Forgot password?</Text>
+        <TouchableOpacity style={{ alignItems: 'center', marginTop: 12 }} onPress={() => nav.navigate('Register')}>
+          <Text style={styles.linkText}>Create an account</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

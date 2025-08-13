@@ -46,6 +46,10 @@ export default function RegisterPage() {
         <TouchableOpacity style={styles.primaryButton} onPress={onSubmit} disabled={loading}>
           <Text style={styles.primaryButtonText}>{loading ? 'Creating...' : 'Sign up'}</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={{ alignItems: 'center', marginTop: 12 }} onPress={() => nav.navigate('Login')}>
+          <Text style={{ color: '#fff' }}>Already have an account? Login</Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
