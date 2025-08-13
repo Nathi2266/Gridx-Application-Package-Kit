@@ -35,6 +35,18 @@ def init_db():
 	ADD COLUMN IF NOT EXISTS phone_number VARCHAR(32);
 	""")
 
+	# Ensure profile_image_url column exists
+	cur.execute("""
+	ALTER TABLE users
+	ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
+	""")
+
+	# Ensure notifications preference column exists
+	cur.execute("""
+	ALTER TABLE users
+	ADD COLUMN IF NOT EXISTS notifications_enabled BOOLEAN DEFAULT TRUE;
+	""")
+
 	# Create topups table
 	cur.execute("""
 	CREATE TABLE IF NOT EXISTS topups (

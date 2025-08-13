@@ -51,10 +51,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async ({ name, email, password }) => {
+  const register = async ({ name, email, password, phone_number }) => {
     setLoading(true);
     try {
-      const response = await registerUser({ full_name: name, email, password });
+      const response = await registerUser({ full_name: name, email, password, phone_number });
       if (response.success) {
         setLoading(false);
         return { success: true };

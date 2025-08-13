@@ -21,6 +21,7 @@ def register():
     full_name = data.get("full_name")
     email = data.get("email")
     password = data.get("password")
+    phone_number = data.get("phone_number")
 
     if not full_name or not email or not password:
         return jsonify({"error": "Missing required fields"}), 400
@@ -32,9 +33,9 @@ def register():
 
     try:
         cur.execute("""
-            INSERT INTO users (full_name, email, password)
-            VALUES (%s, %s, %s) RETURNING id;
-        """, (full_name, email, hashed_password.decode('utf-8')))
+            INSERT INTO users (full_name, email, password, phone_number)
+            VALUES (%s, %s, %s, %s) RETURNING id;
+        """, (full_name, email, hashed_password.decode('utf-8'), phone_number))
         user_id = cur.fetchone()[0]
         conn.commit()
         return jsonify({"message": "User registered successfully", "user_id": user_id}), 201
@@ -48,6 +49,133 @@ def register():
         cur.close()
         conn.close()
 
+@app.route("/api/me", methods=["GET"])
+@jwt_required()
+def get_me():
+    user_id = get_jwt_identity()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, full_name, email, phone_number, profile_image_url, notifications_enabled, created_at FROM users WHERE id = %s",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({"error": "User not found"}), 404
+        user = {
+            "id": row[0],
+            "full_name": row[1],
+            "email": row[2],
+            "phone_number": row[3],
+            "profile_image_url": row[4],
+            "notifications_enabled": row[5],
+            "created_at": row[6].isoformat() if row[6] else None,
+        }
+        return jsonify(user), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route("/api/me", methods=["PUT"])
+@jwt_required()
+def update_me():
+    user_id = get_jwt_identity()
+    data = request.json or {}
+    full_name = data.get("full_name")
+    email = data.get("email")
+    phone_number = data.get("phone_number")
+    profile_image_url = data.get("profile_image_url")
+
+    if not any([full_name, email, phone_number, profile_image_url]):
+        return jsonify({"error": "Nothing to update"}), 400
+
+    fields = []
+    values = []
+    if full_name is not None:
+        fields.append("full_name = %s")
+        values.append(full_name)
+    if email is not None:
+        fields.append("email = %s")
+        values.append(email)
+    if phone_number is not None:
+        fields.append("phone_number = %s")
+        values.append(phone_number)
+    if profile_image_url is not None:
+        fields.append("profile_image_url = %s")
+        values.append(profile_image_url)
+
+    values.append(user_id)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = %s", tuple(values))
+        conn.commit()
+        return jsonify({"message": "Profile updated"}), 200
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        return jsonify({"error": "Email already in use"}), 409
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route("/api/me/password", methods=["PUT"])
+@jwt_required()
+def change_password():
+    user_id = get_jwt_identity()
+    data = request.json or {}
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+    if not current_password or not new_password:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT password FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({"error": "User not found"}), 404
+        if not bcrypt.checkpw(current_password.encode('utf-8'), row[0].encode('utf-8')):
+            return jsonify({"error": "Current password is incorrect"}), 401
+        new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        cur.execute("UPDATE users SET password = %s WHERE id = %s", (new_hash, user_id))
+        conn.commit()
+        return jsonify({"message": "Password updated"}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route("/api/me/notifications", methods=["PUT"])
+@jwt_required()
+def update_notifications():
+    user_id = get_jwt_identity()
+    data = request.json or {}
+    enabled = data.get("enabled")
+    if enabled is None:
+        return jsonify({"error": "Missing 'enabled' boolean"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE users SET notifications_enabled = %s WHERE id = %s", (bool(enabled), user_id))
+        conn.commit()
+        return jsonify({"message": "Notifications preference updated"}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.json
